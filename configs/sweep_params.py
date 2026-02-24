@@ -58,3 +58,39 @@ FD = {
 }
 
 }
+
+HMDB_UCF_small = {
+'TemSR': {
+                'pre_learning_rate':                {'values': [1e-3, 5e-4, 1e-4]},
+                'learning_rate':                    {'values': [5e-4, 1e-4, 5e-5, 1e-5]},
+                'ent_loss_wt':                      {'values': [1e-1, 5e-1, 1, 1.5, 2]},
+                'disc_loss_wt':                     {'values': [10, 50, 100]},
+                'src_like_entropy_wt':              {'values': [1e-1, 5e-1, 1, 1.5, 2]},
+                'Gent':                             {'values': [True, False]},
+                'trg_max_min_loss_wt':              {'distribution': 'uniform', 'min': 2, 'max': 7},
+                'AR_hid_dim':                       {'values': [64, 128, 256]},
+                'num_splits':                       {'values': [4, 8, 16]},
+                'num_masked':                       {'values': [1, 2]},
+                'anchor_percent':                   {'values': [0.1, 0.2, 0.3, 0.4, 0.5]},
+                'CL_temp':                          {'values': [1, 1e-1, 5e-2, 1e-2]},
+                'detach':                           {'values': [True, False]},
+}
+}
+
+HMDB_UCF_full = {
+'TemSR': {
+                'pre_learning_rate':                {'values': [1e-3, 5e-4, 1e-4]},
+                'learning_rate':                    {'values': [5e-4, 1e-4, 5e-5, 1e-5]},
+                'ent_loss_wt':                      {'values': [1e-1, 5e-1, 1, 1.5, 2]},
+                'disc_loss_wt':                     {'values': [10, 50, 100]},
+                'src_like_entropy_wt':              {'values': [1e-1, 5e-1, 1, 1.5, 2]},
+                'Gent':                             {'values': [True, False]},
+                'trg_max_min_loss_wt':              {'distribution': 'uniform', 'min': 2, 'max': 7},
+                'AR_hid_dim':                       {'values': [64, 128, 256]},
+                'num_splits':                       {'values': [4, 8, 16]},
+                'num_masked':                       {'values': [1, 2]},
+                'anchor_percent':                   {'values': [0.1, 0.2, 0.3, 0.4, 0.5]},
+                'CL_temp':                          {'values': [1, 1e-1, 5e-2, 1e-2]},
+                'detach':                           {'values': [True, False]},
+}
+}

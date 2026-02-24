@@ -62,3 +62,49 @@ class FD():
                      }
         }
 
+
+class HMDB_UCF_small():
+    def __init__(self):
+        super(HMDB_UCF_small, self).__init__()
+        self.train_params = {
+            'num_epochs': 40,
+            'batch_size': 16,  # Smaller batch due to high-dim features (2048)
+            'weight_decay': 1e-4,
+            'step_size': 50,
+            'lr_decay': 0.5
+        }
+        self.alg_hparams = {
+            'TemSR': {
+                'pre_learning_rate': 0.0005, 'learning_rate': 0.0001,
+                'ent_loss_wt': 0.5, 'disc_loss_wt': 50,
+                'src_like_entropy_wt': 1.0, 'Gent': True,
+                'src_like_epochs': 3, 'trg_disc_epochs': 3,
+                'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
+                'num_splits': 8, 'num_masked': 1,
+                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True
+            }
+        }
+
+
+class HMDB_UCF_full():
+    def __init__(self):
+        super(HMDB_UCF_full, self).__init__()
+        self.train_params = {
+            'num_epochs': 40,
+            'batch_size': 16,
+            'weight_decay': 1e-4,
+            'step_size': 50,
+            'lr_decay': 0.5
+        }
+        self.alg_hparams = {
+            'TemSR': {
+                'pre_learning_rate': 0.0005, 'learning_rate': 0.0001,
+                'ent_loss_wt': 0.5, 'disc_loss_wt': 50,
+                'src_like_entropy_wt': 1.0, 'Gent': True,
+                'src_like_epochs': 3, 'trg_disc_epochs': 3,
+                'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
+                'num_splits': 8, 'num_masked': 1,
+                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True
+            }
+        }
+

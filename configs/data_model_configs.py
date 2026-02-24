@@ -117,3 +117,79 @@ class FD():
 
         ## Anchor
         self.anchor_percent = 0.2
+
+
+class HMDB_UCF_small(object):
+    def __init__(self):
+        super(HMDB_UCF_small, self).__init__()
+        self.scenarios = [("ucf101", "hmdb51"), ("hmdb51", "ucf101")]
+        self.class_names = ['golf', 'pullup', 'ride_bike', 'ride_horse', 'shoot_ball']
+        self.sequence_len = 16  # Temporal segments sampled from video
+        self.shuffle = True
+        self.drop_last = False
+        self.normalize = False  # TA3N features are already normalized
+
+        # Model configs — input_channels = ResNet101 feature dim
+        self.input_channels = 2048
+        self.kernel_size = 5
+        self.stride = 1
+        self.dropout = 0.5
+        self.num_classes = 5
+
+        # Features
+        self.mid_channels = 256
+        self.final_out_channels = 128
+        self.features_len = 1
+        self.AR_hid_dim_raw = self.input_channels
+
+        self.AR_hid_dim = 128
+
+        # Temporal recovering (masking)
+        self.num_splits = 8
+        self.num_masked = 1
+
+        # Temporal recovering (regularization)
+        self.num_segments = 8
+        self.num_removed = 1
+
+        ## Anchor
+        self.anchor_percent = 0.2
+
+
+class HMDB_UCF_full(object):
+    def __init__(self):
+        super(HMDB_UCF_full, self).__init__()
+        self.scenarios = [("ucf101", "hmdb51"), ("hmdb51", "ucf101")]
+        self.class_names = ['climb', 'fencing', 'golf', 'kick_ball', 'pullup',
+                            'punch', 'pushup', 'ride_bike', 'ride_horse',
+                            'shoot_ball', 'shoot_bow', 'walk']
+        self.sequence_len = 16
+        self.shuffle = True
+        self.drop_last = False
+        self.normalize = False
+
+        # Model configs
+        self.input_channels = 2048
+        self.kernel_size = 5
+        self.stride = 1
+        self.dropout = 0.5
+        self.num_classes = 12
+
+        # Features
+        self.mid_channels = 256
+        self.final_out_channels = 128
+        self.features_len = 1
+        self.AR_hid_dim_raw = self.input_channels
+
+        self.AR_hid_dim = 128
+
+        # Temporal recovering (masking)
+        self.num_splits = 8
+        self.num_masked = 1
+
+        # Temporal recovering (regularization)
+        self.num_segments = 8
+        self.num_removed = 1
+
+        ## Anchor
+        self.anchor_percent = 0.2
