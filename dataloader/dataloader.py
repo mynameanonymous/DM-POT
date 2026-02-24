@@ -31,6 +31,7 @@ class Load_Dataset(Dataset):
             y_data = torch.from_numpy(y_data)
 
         # Normalize data
+        self.transform = None
         if dataset_configs.normalize:
             data_mean = torch.mean(x_data, dim=(0, 2))
             data_std = torch.std(x_data, dim=(0, 2))
