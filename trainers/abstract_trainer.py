@@ -65,6 +65,12 @@ class AbstractTrainer(object):
         self.default_hparams = {**self.hparams_class.alg_hparams[self.da_method],
                                 **self.hparams_class.train_params}
 
+        # Inject ablation flags into hparams
+        active_ablation = getattr(args, 'active_ablation', 'none')
+        self.default_hparams['ablate_masking'] = (active_ablation == 'no_masking')
+        self.default_hparams['ablate_reliability'] = (active_ablation == 'no_reliability')
+        self.default_hparams['ablate_pot'] = (active_ablation == 'no_pot')
+
         # metrics
         self.num_classes = self.dataset_configs.num_classes
         self.ACC = Accuracy(task="multiclass", num_classes=self.num_classes)

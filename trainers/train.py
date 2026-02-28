@@ -152,11 +152,42 @@ if __name__ == "__main__":
     parser.add_argument('--metric_to_maximize', default="f1_score", type=str)
     parser.add_argument('--is_sweep', default=False, type=bool, help='singe run or sweep')
 
+    # ========= Ablation settings ===============
+    parser.add_argument('--ablations', nargs='*', default=['none'],
+                        help='Ablation(s) to run (space-separated). '
+                             'Choices: none, no_masking, no_reliability, no_pot. '
+                             'Example: --ablations no_masking no_pot')
+
 
     args = parser.parse_args()
 
-    trainer = Trainer(args)
-    if args.is_sweep:
-        trainer.sweep()
-    else:
-        trainer.train()
+    # Validate ablation names
+    valid_ablations = {'none', 'no_masking', 'no_reliability', 'no_pot'}
+    for abl in args.ablations:
+        if abl not in valid_ablations:
+            parser.error(f"Unknown ablation '{abl}'. Choose from: {valid_ablations}")
+
+    # Run each ablation as a separate experiment
+    for ablation in args.ablations:
+        print(f"\n{'='*60}")
+        print(f"  Running ablation: {ablation}")
+        print(f"{'='*60}\n")
+
+        # Set the active ablation flags
+        args.active_ablation = ablation
+
+        # Append ablation name to run description for separate logging
+        original_desc = args.run_description
+        if ablation != 'none':
+            args.run_description = f"{original_desc}_ablation_{ablation}"
+        else:
+            args.run_description = original_desc
+
+        trainer = Trainer(args)
+        if args.is_sweep:
+            trainer.sweep()
+        else:
+            trainer.train()
+
+        # Restore original description for next iteration
+        args.run_description = original_desc

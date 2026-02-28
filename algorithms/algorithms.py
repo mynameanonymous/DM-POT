@@ -118,6 +118,13 @@ class TemSR(Algorithm):
 
     def update(self, trg_dataloader, avg_meter, logger):
 
+        # Read ablation flags (default False = full model)
+        ablate_masking = self.hparams.get('ablate_masking', False)
+        ablate_reliability = self.hparams.get('ablate_reliability', False)
+        ablate_pot = self.hparams.get('ablate_pot', False)
+
+        logger.debug(f'Ablation flags: masking={ablate_masking}, reliability={ablate_reliability}, pot={ablate_pot}')
+
         # defining best and last model
         best_src_risk = float('inf')
         best_model = self.network.state_dict()
@@ -157,33 +164,45 @@ class TemSR(Algorithm):
                 self.optimizer.zero_grad()
                 self.recover_optimizer.zero_grad()
 
-                # masking and recover.
-
-                masked_data, [mask, mask_indices] = dynamicMasking(trg_x, num_splits=self.hparams['num_splits'],
-                                                             num_masked=min(self.hparams['num_masked'],self.hparams['num_splits']))
-                # masked_data, [mask, mask_indices] = masking2(trg_x, num_splits=self.hparams['num_splits'],
-                                                            #  num_masked=min(self.hparams['num_masked'],self.hparams['num_splits']))
-
-                recovered_data = self.signal_recover(masked_data)
+                # ========== MASKING + RECOVERY ==========
+                if not ablate_masking:
+                    # Full model: dynamic masking and signal recovery
+                    masked_data, [mask, mask_indices] = dynamicMasking(trg_x, num_splits=self.hparams['num_splits'],
+                                                                 num_masked=min(self.hparams['num_masked'],self.hparams['num_splits']))
+                    recovered_data = self.signal_recover(masked_data)
+                else:
+                    # ABLATION: no masking — use raw target data as "recovered" data
+                    recovered_data = trg_x
+                    mask_indices = None
 
                 # recovered and original samples maximization
-
                 _, recovered_feat = src_feature_extractor(recovered_data) # recovered features.
-                trg_max_min_loss, recovered_data_entropy = Bank_info_max_anchor_min(src_feature_extractor, trg_x, recovered_data, recovered_feat,
-                                                                                                              entropy_bank, sample_bank,
-                                                                                                              self.classifier, self.hparams['anchor_percent'],
-                                                                                                              self.hparams['CL_temp'], self.hparams['detach'])
-                ### Update the bank
-                entropy_bank[trg_idx] = recovered_data_entropy.detach().clone()
-                sample_bank[trg_idx] = recovered_data.detach().clone()
+
+                # ========== RELIABILITY (Anchor-based contrastive) ==========
+                if not ablate_reliability:
+                    # Full model: bank-based info max with anchor min
+                    trg_max_min_loss, recovered_data_entropy = Bank_info_max_anchor_min(src_feature_extractor, trg_x, recovered_data, recovered_feat,
+                                                                                                                  entropy_bank, sample_bank,
+                                                                                                                  self.classifier, self.hparams['anchor_percent'],
+                                                                                                                  self.hparams['CL_temp'], self.hparams['detach'])
+                    ### Update the bank
+                    entropy_bank[trg_idx] = recovered_data_entropy.detach().clone()
+                    sample_bank[trg_idx] = recovered_data.detach().clone()
+                else:
+                    # ABLATION: no reliability — zero out the contrastive loss, skip bank
+                    trg_max_min_loss = torch.tensor(0.0, device=self.device)
 
                 coeffi_anchor = self.hparams["trg_max_min_loss_wt"]*((epoch-1) / self.hparams["num_epochs"])
 
                 raw_feat_seq, raw_feat = self.feature_extractor(trg_x)
 
-                # trg_disc_loss = self.mmd_loss(recovered_feat, raw_feat)  # discrepancy loss. (min)
-                trg_disc_loss = partial_ot_loss(recovered_feat, raw_feat, m=0.8, reg=0.05)
-
+                # ========== DISCREPANCY LOSS (POT vs MSE) ==========
+                if not ablate_pot:
+                    # Full model: partial optimal transport loss
+                    trg_disc_loss = partial_ot_loss(recovered_feat, raw_feat, m=0.8, reg=0.05)
+                else:
+                    # ABLATION: no POT — replace with MSE loss
+                    trg_disc_loss = self.mse_loss(recovered_feat, raw_feat)
 
                 trg_pred = self.classifier(raw_feat)
                 # Entropy loss for target
@@ -195,31 +214,36 @@ class TemSR(Algorithm):
                     trg_ent_loss -= torch.sum(-msoftmax * torch.log(msoftmax + 1e-5))
 
                 ## Entropy loss for source-like samples
-
                 src_like_pred = self.classifier(recovered_feat)
 
-                segmented_samples_ls = []
-                segmented_sample_mask = segment_mask_v1(recovered_data, mask_indices,
-                                                        num_segments=self.hparams['num_splits'],
-                                                        num_removed=min(self.hparams['num_masked'],self.hparams['num_splits']))
+                # ========== TEMPORAL ENTROPY (segment-based, requires masking) ==========
+                if not ablate_masking:
+                    # Full model: segment-based temporal entropy
+                    segmented_samples_ls = []
+                    segmented_sample_mask = segment_mask_v1(recovered_data, mask_indices,
+                                                            num_segments=self.hparams['num_splits'],
+                                                            num_removed=min(self.hparams['num_masked'],self.hparams['num_splits']))
 
-                segmented_sample_first = segment_mask_v3(recovered_data, posi = 'first', padding=True,
-                                                         num_segments=self.hparams['num_splits'],
-                                                         num_removed=min(self.hparams['num_masked'],
-                                                                         self.hparams['num_splits']))
+                    segmented_sample_first = segment_mask_v3(recovered_data, posi = 'first', padding=True,
+                                                             num_segments=self.hparams['num_splits'],
+                                                             num_removed=min(self.hparams['num_masked'],
+                                                                             self.hparams['num_splits']))
 
-                segmented_sample_last = segment_mask_v3(recovered_data, posi='last', padding=True,
-                                                        num_segments=self.hparams['num_splits'],
-                                                        num_removed=min(self.hparams['num_masked'],
-                                                                        self.hparams['num_splits']))
-                segmented_samples_ls.append(segmented_sample_mask)
-                segmented_samples_ls.append(segmented_sample_first)
-                segmented_samples_ls.append(segmented_sample_last)
-                segmented_samples_ls = torch.cat(segmented_samples_ls, 0)
-                _, segmented_feats = src_feature_extractor(segmented_samples_ls)
-                segmented_pred = self.classifier(segmented_feats)
-                segmented_all_pred = torch.cat((src_like_pred, segmented_pred),0)
-                src_like_entropy = Temporal_EntropyLoss_v1(segmented_all_pred, src_like_pred.size(0))
+                    segmented_sample_last = segment_mask_v3(recovered_data, posi='last', padding=True,
+                                                            num_segments=self.hparams['num_splits'],
+                                                            num_removed=min(self.hparams['num_masked'],
+                                                                            self.hparams['num_splits']))
+                    segmented_samples_ls.append(segmented_sample_mask)
+                    segmented_samples_ls.append(segmented_sample_first)
+                    segmented_samples_ls.append(segmented_sample_last)
+                    segmented_samples_ls = torch.cat(segmented_samples_ls, 0)
+                    _, segmented_feats = src_feature_extractor(segmented_samples_ls)
+                    segmented_pred = self.classifier(segmented_feats)
+                    segmented_all_pred = torch.cat((src_like_pred, segmented_pred),0)
+                    src_like_entropy = Temporal_EntropyLoss_v1(segmented_all_pred, src_like_pred.size(0))
+                else:
+                    # ABLATION: no masking — use standard entropy on source-like predictions
+                    src_like_entropy = EntropyLoss(src_like_pred)
 
                 if self.hparams['Gent']:
                     softmax_out_src_like = nn.Softmax(dim=1)(src_like_pred)
