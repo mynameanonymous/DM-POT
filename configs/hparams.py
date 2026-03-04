@@ -75,7 +75,7 @@ class HMDB_UCF_small():
         self.alg_hparams = {
             'TemSR': {
                 'pre_learning_rate': 0.0005, 'learning_rate': 0.0001,
-                'ent_loss_wt': 0.5, 'disc_loss_wt': 50,
+                'ent_loss_wt': 0.5, 'disc_loss_wt': 1.0,
                 'src_like_entropy_wt': 1.0, 'Gent': True,
                 'src_like_epochs': 3, 'trg_disc_epochs': 3,
                 'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
@@ -99,7 +99,7 @@ class HMDB_UCF_full():
         self.alg_hparams = {
             'TemSR': {
                 'pre_learning_rate': 0.0005, 'learning_rate': 0.0001,
-                'ent_loss_wt': 0.5, 'disc_loss_wt': 50,
+                'ent_loss_wt': 0.5, 'disc_loss_wt': 1.0,
                 'src_like_entropy_wt': 1.0, 'Gent': True,
                 'src_like_epochs': 3, 'trg_disc_epochs': 3,
                 'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
