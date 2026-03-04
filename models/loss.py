@@ -49,24 +49,36 @@ class CrossEntropyLabelSmooth(nn.Module):
 #     print(mask_out.shape)
 #     entropy = - (torch.sum(mask_out * torch.log(mask_out),-1))
 #     return entropy
-def partial_ot_loss(source, target, m=0.8, reg=1e-1):
+def partial_ot_loss(source, target, m=0.8, reg=1e-1, num_iter=20):
     """
+    Differentiable partial OT loss using Sinkhorn iterations (stays in PyTorch).
     source, target: [bs, dim] features
     m: fraction of total mass to transport (0 < m <= 1)
     reg: entropic regularization
+    num_iter: number of Sinkhorn iterations
     """
-    src_np = source.detach().cpu().numpy()
-    tgt_np = target.detach().cpu().numpy()
+    bs = source.shape[0]
 
-    # uniform marginals
-    a = ot.unif(src_np.shape[0])
-    b = ot.unif(tgt_np.shape[0])
+    # Cost matrix (pairwise squared Euclidean distance)
+    C = torch.cdist(source, target, p=2).pow(2)
+    C = C / (C.max().detach() + 1e-8)  # normalize, detach the max for stable grads
 
-    cost_matrix = ot.dist(src_np, tgt_np)
-    cost_matrix /= cost_matrix.max()  # normalize
+    # Partial OT marginals: source sums to m, target sums to m
+    a = torch.full((bs,), m / bs, device=source.device, dtype=source.dtype)
+    b = torch.full((bs,), m / bs, device=source.device, dtype=source.dtype)
 
-    G, log = ot.partial.partial_wasserstein(a, b, cost_matrix, m=m, log=True)
-    loss = torch.tensor(np.sum(G * cost_matrix), dtype=torch.float32).to(source.device)
+    # Sinkhorn iterations
+    K = torch.exp(-C / reg)
+    u = torch.ones_like(a)
+    for _ in range(num_iter):
+        v = b / (K.t() @ u + 1e-8)
+        u = a / (K @ v + 1e-8)
+
+    # Transport plan
+    G = torch.diag(u) @ K @ torch.diag(v)
+
+    # OT loss
+    loss = (G * C).sum()
     return loss
 
 def EntropyLoss(input_):

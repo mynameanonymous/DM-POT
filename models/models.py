@@ -163,6 +163,7 @@ def dynamicMasking(x , num_splits=8 , num_masked=4):
     var = np.var(x.cpu().numpy(), axis=1, keepdims=True)
     scaling = np.clip(var * varianceFactor, a_min=0, a_max=None)
     num_masked = int(num_masked * scaling.mean())
+    num_masked = max(1, num_masked)  # Ensure at least 1 patch is always masked
     # Reshape input tensor to create patches
     ### Input size (bs, num_channels, time_length)
 

@@ -279,9 +279,9 @@ class TemSR(Algorithm):
 
             self.lr_scheduler.step()
 
-            # saving the best model based on src risk
-            if (epoch + 1) % 10 == 0 and avg_meter['Src_cls_loss'].avg < best_src_risk:
-                best_src_risk = avg_meter['Src_cls_loss'].avg
+            # saving the best model based on total adaptation loss
+            if (epoch + 1) % 10 == 0 and avg_meter['total_loss'].avg < best_src_risk:
+                best_src_risk = avg_meter['total_loss'].avg
                 best_model = deepcopy(self.network.state_dict())
             logger.debug(f'[Epoch : {epoch}/{self.hparams["num_epochs"]}]')
             for key, val in avg_meter.items():
