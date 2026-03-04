@@ -1,5 +1,4 @@
 def get_hparams_class(dataset_name):
-    """Return the algorithm class with the given name."""
     if dataset_name not in globals():
         raise NotImplementedError("Dataset not found: {}".format(dataset_name))
     return globals()[dataset_name]
@@ -81,7 +80,8 @@ class HMDB_UCF_small():
                 'src_like_epochs': 3, 'trg_disc_epochs': 3,
                 'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
                 'num_splits': 8, 'num_masked': 1,
-                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True
+                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True,
+                'recover_proj_dim': 256
             }
         }
 
@@ -104,7 +104,8 @@ class HMDB_UCF_full():
                 'src_like_epochs': 3, 'trg_disc_epochs': 3,
                 'trg_max_min_loss_wt': 3.0, 'AR_hid_dim': 128,
                 'num_splits': 8, 'num_masked': 1,
-                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True
+                'anchor_percent': 0.3, 'CL_temp': 0.01, 'detach': True,
+                'recover_proj_dim': 256
             }
         }
 

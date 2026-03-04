@@ -16,7 +16,68 @@ def get_backbone_class(backbone_name):
         raise NotImplementedError("Algorithm not found: {}".format(backbone_name))
     return globals()[backbone_name]
 
+
 ### BACKBONE NETWORKS ###
+
+### VideoMLP — lightweight backbone for pre-extracted video features ###
+class VideoMLP(nn.Module):
+    """
+    MLP backbone for pre-extracted features (e.g., ResNet101 2048-dim).
+    Applies per-frame projection without temporal pooling, preserving
+    temporal resolution for downstream masking/recovery.
+    """
+    def __init__(self, configs):
+        super(VideoMLP, self).__init__()
+        self.proj = nn.Sequential(
+            nn.Linear(configs.input_channels, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Dropout(configs.dropout),
+            nn.Linear(512, configs.final_out_channels),
+            nn.LayerNorm(configs.final_out_channels),
+            nn.ReLU(),
+        )
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(configs.features_len)
+
+    def forward(self, x_in):
+        # x_in: (B, C_in, T) e.g. (B, 2048, 16)
+        # Apply MLP per frame: transpose to (B, T, C_in), project, transpose back
+        x = x_in.transpose(1, 2)            # (B, T, 2048)
+        x = self.proj(x)                     # (B, T, 128)
+        x = x.transpose(1, 2)               # (B, 128, T) — temporal dim preserved!
+
+        x_flat = self.adaptive_pool(x).view(x.shape[0], -1)  # (B, 128)
+        return x, x_flat
+
+
+### Video Signal Recovery — with projection before LSTM ###
+class Video_Signal_Recover(nn.Module):
+    """
+    Signal recovery module for high-dimensional video features.
+    Projects 2048-dim input to a smaller dimension before LSTM
+    to keep parameters manageable, then projects back.
+    """
+    def __init__(self, configs, hparams):
+        super(Video_Signal_Recover, self).__init__()
+        self.num_channels = configs.input_channels  # 2048
+        proj_dim = hparams.get('recover_proj_dim', 256)
+
+        # Project down before LSTM
+        self.proj_down = nn.Linear(self.num_channels, proj_dim)
+        self.rnn_encoder = nn.LSTM(input_size=proj_dim, hidden_size=hparams['AR_hid_dim'], batch_first=True)
+        self.rnn_decoder = nn.LSTM(input_size=hparams['AR_hid_dim'], hidden_size=proj_dim, batch_first=True)
+        # Project back up
+        self.proj_up = nn.Linear(proj_dim, self.num_channels)
+
+    def forward(self, x):
+        # x: (B, 2048, T)
+        x = x.transpose(-1, -2)              # (B, T, 2048)
+        x = self.proj_down(x)                # (B, T, proj_dim)
+        out, (h, c) = self.rnn_encoder(x)    # (B, T, AR_hid_dim)
+        out, (h, c) = self.rnn_decoder(out)  # (B, T, proj_dim)
+        out = self.proj_up(out)              # (B, T, 2048)
+        out = out.transpose(-1, -2)          # (B, 2048, T)
+        return out
 
 ### 1D-CNN ###
 class CNN(nn.Module):

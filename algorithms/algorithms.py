@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from models.models import Classifier, Signal_Recover
+from models.models import Classifier, Signal_Recover, Video_Signal_Recover
 from models.models import masking2, segment_mask_v1,segment_mask_v3 ,dynamicMasking
 
 from models.loss import *
@@ -48,8 +48,11 @@ class TemSR(Algorithm):
 
         self.network = nn.Sequential(self.feature_extractor, self.classifier)
 
-        # recover module used in target domain.
-        self.signal_recover = Signal_Recover(configs, hparams)
+        # recover module: use Video_Signal_Recover for VideoMLP backbone
+        if backbone.__name__ == 'VideoMLP':
+            self.signal_recover = Video_Signal_Recover(configs, hparams)
+        else:
+            self.signal_recover = Signal_Recover(configs, hparams)
 
         self.optimizer = torch.optim.Adam(
             self.network.parameters(),
