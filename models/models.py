@@ -158,39 +158,76 @@ def get_configs(dataset):
     return dataset_class(), hparams_class()
 
 
-def dynamicMasking(x , num_splits=8 , num_masked=4):
-    varianceFactor = 1 # may change this later in the config file
-    var = np.var(x.cpu().numpy(), axis=1, keepdims=True)
-    scaling = np.clip(var * varianceFactor, a_min=0, a_max=None)
-    num_masked = int(num_masked * scaling.mean())
-    num_masked = max(1, num_masked)  # Ensure at least 1 patch is always masked
-    # Reshape input tensor to create patches
-    ### Input size (bs, num_channels, time_length)
+# def dynamicMasking(x , num_splits=8 , num_masked=4):
+#     varianceFactor = 1 # may change this later in the config file
+#     var = np.var(x.cpu().numpy(), axis=1, keepdims=True)
+#     scaling = np.clip(var * varianceFactor, a_min=0, a_max=None)
+#     num_masked = int(num_masked * scaling.mean())
+#     num_masked = max(1, num_masked)  # Ensure at least 1 patch is always masked
+#     # Reshape input tensor to create patches
+#     ### Input size (bs, num_channels, time_length)
 
-    patches = rearrange(x, 'b n (p l) -> b n p l', p=num_splits)
-    masked_patches = patches.clone()
+#     patches = rearrange(x, 'b n (p l) -> b n p l', p=num_splits)
+#     masked_patches = patches.clone()
 
-    # Generate random indices for masking
-    rand_indices = torch.rand(x.shape[1], num_splits).argsort(dim=-1)
-    selected_indices = rand_indices[:, :num_masked]
-    # Create a mask tensor
+#     # Generate random indices for masking
+#     rand_indices = torch.rand(x.shape[1], num_splits).argsort(dim=-1)
+#     selected_indices = rand_indices[:, :num_masked]
+#     # Create a mask tensor
+#     mask = torch.zeros_like(patches, dtype=torch.bool)
+
+#     # Create a batch index tensor
+#     batch_indices = torch.arange(x.shape[0]).unsqueeze(1).unsqueeze(2)
+
+#     # Apply the mask using advanced indexing
+#     mask[batch_indices, torch.arange(x.shape[1]).view(1, -1, 1), selected_indices.unsqueeze(0).expand(x.shape[0], -1, -1)] = True  # 32,1,1  1,6,1  32,6,1
+
+#     # Mask the selected patches
+#     masked_patches[mask] = 0
+
+#     # Reshape the masked patches and the mask back to the original shape
+#     mask = rearrange(mask, 'b n p l -> b n (p l)')
+#     masked_x = rearrange(masked_patches, 'b n p l -> b n (p l)', p=num_splits)
+
+#     return masked_x, [mask,rand_indices]
+def dynamicMasking(x, num_splits=8, num_masked=4, beta=0.5):
+
+    B, C, T = x.shape
+
+    # split into temporal segments
+    patches = rearrange(x, 'b c (p l) -> b c p l', p=num_splits)
+
+    # ----- temporal variance -----
+    var = patches.var(dim=-1)
+
+    # ----- spectral energy -----
+    fft_vals = torch.fft.rfft(patches, dim=-1)
+    spectral_energy = torch.norm(fft_vals, dim=-1)
+
+    # ----- reliability score -----
+    score = beta * var + (1 - beta) * spectral_energy
+    alpha = score / (score.sum(dim=-1, keepdim=True) + 1e-8)
+
+    # select most unstable segments
+    mask_indices = torch.topk(alpha, num_masked, dim=-1).indices
+
+    # create mask
     mask = torch.zeros_like(patches, dtype=torch.bool)
 
-    # Create a batch index tensor
-    batch_indices = torch.arange(x.shape[0]).unsqueeze(1).unsqueeze(2)
+    b_idx = torch.arange(B).view(B,1,1).expand(-1,C,num_masked)
+    c_idx = torch.arange(C).view(1,C,1).expand(B,-1,num_masked)
 
-    # Apply the mask using advanced indexing
-    mask[batch_indices, torch.arange(x.shape[1]).view(1, -1, 1), selected_indices.unsqueeze(0).expand(x.shape[0], -1, -1)] = True  # 32,1,1  1,6,1  32,6,1
+    mask[b_idx, c_idx, mask_indices] = True
 
-    # Mask the selected patches
+    # apply masking
+    masked_patches = patches.clone()
     masked_patches[mask] = 0
 
-    # Reshape the masked patches and the mask back to the original shape
-    mask = rearrange(mask, 'b n p l -> b n (p l)')
-    masked_x = rearrange(masked_patches, 'b n p l -> b n (p l)', p=num_splits)
+    # reshape back
+    masked_x = rearrange(masked_patches, 'b c p l -> b c (p l)')
+    mask = rearrange(mask, 'b c p l -> b c (p l)')
 
-    return masked_x, [mask,rand_indices]
-
+    return masked_x, [mask, mask_indices]
 
 # temporal masking
 def masking(x, num_splits=8, num_masked=4):
