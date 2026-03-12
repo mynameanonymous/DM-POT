@@ -5,7 +5,7 @@ def get_sweep_hparams(dataset_name):
         raise NotImplementedError("Dataset not found: {}".format(dataset_name))
     return globals()[dataset_name]
 HAR = {
-'TemSR': {
+'DM_POT': {
                 'pre_learning_rate':                {'values': [5e-3, 1e-3, 5e-4]},
                 'learning_rate':                    {'values': [1e-3, 5e-4, 1e-4]},
                 'ent_loss_wt':                      {'values': [1e-2, 1e-1, 1, 1.5, 2, 2.5, 3]},
@@ -23,7 +23,7 @@ HAR = {
 }
 
 EEG = {
-'TemSR': {
+'DM_POT': {
                 'pre_learning_rate':                {'values': [3e-3, 1e-3]},
                 'learning_rate':                    {'values': [1e-4, 5e-5, 1e-5, 7e-6]},
                 'ent_loss_wt':                      {'values': [1e-1, 1, 1.5, 2, 2.5, 3]},
@@ -41,7 +41,7 @@ EEG = {
 }
 
 FD = {
-'TemSR': {
+'DM_POT': {
                 'pre_learning_rate':                {'values': [5e-3, 3e-3, 1e-3, 5e-4, 1e-4]},
                 'learning_rate':                    {'values': [5e-4, 1e-4, 5e-5, 1e-5, 7e-6]},
                 'ent_loss_wt':                      {'distribution': 'uniform', 'min': 0, 'max': 5},
@@ -60,7 +60,7 @@ FD = {
 }
 
 HMDB_UCF_small = {
-'TemSR': {
+'DM_POT': {
                 'pre_learning_rate':                {'values': [1e-3, 5e-4, 1e-4]},
                 'learning_rate':                    {'values': [5e-4, 1e-4, 5e-5, 1e-5]},
                 'ent_loss_wt':                      {'values': [1e-1, 5e-1, 1, 1.5, 2]},
@@ -78,7 +78,7 @@ HMDB_UCF_small = {
 }
 
 HMDB_UCF_full = {
-'TemSR': {
+'DM_POT': {
                 'pre_learning_rate':                {'values': [1e-3, 5e-4, 1e-4]},
                 'learning_rate':                    {'values': [5e-4, 1e-4, 5e-5, 1e-5]},
                 'ent_loss_wt':                      {'values': [1e-1, 5e-1, 1, 1.5, 2]},

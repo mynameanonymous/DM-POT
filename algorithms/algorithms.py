@@ -35,10 +35,10 @@ class Algorithm(torch.nn.Module):
     def update(self, *args, **kwargs):
         raise NotImplementedError
 
-class TemSR(Algorithm):
+class DM_POT(Algorithm):
 
     def __init__(self, backbone, configs, hparams, device):
-        super(TemSR, self).__init__(configs)
+        super(DM_POT, self).__init__(configs)
 
 
         # backbone.
